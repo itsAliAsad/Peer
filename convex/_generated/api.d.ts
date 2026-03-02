@@ -29,7 +29,6 @@ import type * as tutor_profiles from "../tutor_profiles.js";
 import type * as university_courses from "../university_courses.js";
 import type * as users from "../users.js";
 import type * as utils from "../utils.js";
-import type * as waitlist from "../waitlist.js";
 
 import type {
   ApiFromModules,
@@ -59,7 +58,6 @@ declare const fullApi: ApiFromModules<{
   university_courses: typeof university_courses;
   users: typeof users;
   utils: typeof utils;
-  waitlist: typeof waitlist;
 }>;
 
 /**

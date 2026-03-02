@@ -14,7 +14,6 @@ const IS_LAUNCHED = true;
 // Routes that are allowed before launch
 // Note: Admin users can access all routes
 const ALLOWED_ROUTES = [
-    "/",           // Waitlist landing page
     "/admin",      // Admin dashboard
     "/sign-in",    // Auth pages
     "/sign-up",
@@ -58,7 +57,7 @@ export default function Template({ children }: { children: React.ReactNode }) {
         // For all other internal routes, redirect to landing page
         if (!hasShownToast) {
             toast.info("🚧 Coming Soon!", {
-                description: "We're still building this feature. Join the waitlist to be notified when we launch!",
+                description: "We're still building this feature. Check back soon!",
                 duration: 5000,
             });
             setHasShownToast(true);

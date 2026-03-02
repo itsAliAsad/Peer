@@ -407,18 +407,4 @@ export default defineSchema({
         .index("by_actor", ["actorId"])
         .index("by_action", ["action"]),
 
-    // ==========================================
-    // WAITLIST (Pre-Launch Signups)
-    // ==========================================
-    waitlist: defineTable({
-        email: v.string(),
-        name: v.optional(v.string()),
-        university: v.optional(v.string()),
-        role: v.optional(v.union(v.literal("student"), v.literal("tutor"))),
-        referralSource: v.optional(v.string()),
-        createdAt: v.number(),
-        notifiedAt: v.optional(v.number()),
-    })
-        .index("by_email", ["email"])
-        .index("by_creation", ["createdAt"]),
 });
