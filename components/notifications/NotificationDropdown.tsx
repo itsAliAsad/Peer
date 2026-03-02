@@ -67,12 +67,13 @@ export default function NotificationDropdown() {
                     router.push(`/messages`);
                 }
                 break;
-            case "crash_course_new_application":
-            case "crash_course_voting_started":
-            case "crash_course_tutor_selected":
+            case "crash_course_application":
+            case "crash_course_vote_open":
+            case "crash_course_selected":
             case "crash_course_confirmed":
-            case "crash_course_starting_soon":
+            case "crash_course_reminder":
             case "crash_course_cancelled":
+            case "crash_course_low_enrollment":
                 if (crashCourseId) {
                     router.push(`/crash-courses/${crashCourseId}`);
                 } else {
@@ -134,12 +135,13 @@ export default function NotificationDropdown() {
                                             ` from ${(notification as any).sender.name}`}
                                     </>
                                 )}
-                                {notification.type === "crash_course_new_application" && "New Tutor Application"}
-                                {notification.type === "crash_course_voting_started" && "Voting Started"}
-                                {notification.type === "crash_course_tutor_selected" && "Tutor Selected"}
+                                {notification.type === "crash_course_application" && "New Tutor Application"}
+                                {notification.type === "crash_course_vote_open" && "Voting Started"}
+                                {notification.type === "crash_course_selected" && "Tutor Selected"}
                                 {notification.type === "crash_course_confirmed" && "Crash Course Confirmed"}
-                                {notification.type === "crash_course_starting_soon" && "Crash Course Starting Soon"}
+                                {notification.type === "crash_course_reminder" && "Crash Course Reminder"}
                                 {notification.type === "crash_course_cancelled" && "Crash Course Cancelled"}
+                                {notification.type === "crash_course_low_enrollment" && "Low Enrollment"}
                             </div>
                             <div className="text-xs text-muted-foreground">
                                 {new Date(notification.createdAt).toLocaleDateString()}{" "}
