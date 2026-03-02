@@ -96,7 +96,7 @@ export const updateOnlineStatus = mutation({
             .withIndex("by_user", (q) => q.eq("userId", user._id))
             .unique();
 
-        if (!profile) throw new Error("Tutor profile not found");
+        if (!profile) return; // No tutor profile — silently skip (student users, etc.)
 
         await ctx.db.patch(profile._id, {
             isOnline: args.status === "online",

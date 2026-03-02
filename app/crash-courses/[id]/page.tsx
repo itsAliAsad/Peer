@@ -279,7 +279,7 @@ export default function CrashCourseDetailPage() {
     };
 
     return (
-        <div className="container mx-auto py-10 max-w-3xl">
+        <div className="container mx-auto py-10 max-w-6xl px-4">
             {/* Back */}
             <Link
                 href="/crash-courses"
@@ -289,615 +289,647 @@ export default function CrashCourseDetailPage() {
                 Back to Crash Courses
             </Link>
 
-            {/* Status Header */}
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                    <Badge className={`${status.color} border-none text-sm font-semibold px-3 py-1`}>
+            {/* ═══ Header ═══ */}
+            <div className="mb-8">
+                {crashCourse.course && (
+                    <p className="text-sm font-medium text-muted-foreground tracking-wide uppercase mb-2">
+                        {crashCourse.course.code} · {crashCourse.course.name}
+                    </p>
+                )}
+
+                <div className="flex items-start justify-between gap-4 mb-3">
+                    <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
+                        {crashCourse.title}
+                    </h1>
+                    <Badge className={`${status.color} border-none text-sm font-semibold px-3 py-1 shrink-0 mt-1`}>
                         {status.label}
                     </Badge>
-                    <Badge variant="outline">{examTypeLabels[crashCourse.examType]}</Badge>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                    <span>
+                        {crashCourse.origin === "demand" ? "Requested by" : "Offered by"}{" "}
+                        <Link
+                            href={`/profile/${crashCourse.creator?._id}`}
+                            className="font-medium text-foreground hover:underline"
+                        >
+                            {crashCourse.creator?.name ?? "Unknown"}
+                        </Link>
+                    </span>
+                    <span className="text-border">·</span>
+                    <Badge variant="outline" className="text-xs font-normal">
+                        {examTypeLabels[crashCourse.examType]}
+                    </Badge>
                     {crashCourse.origin === "demand" ? (
-                        <Badge variant="outline" className="bg-amber-500/5 text-amber-700 border-amber-200">
+                        <Badge variant="outline" className="bg-amber-500/5 text-amber-700 border-amber-200 text-xs font-normal">
                             🔥 Requested
                         </Badge>
                     ) : (
-                        <Badge variant="outline" className="bg-blue-500/5 text-blue-700 border-blue-200">
+                        <Badge variant="outline" className="bg-blue-500/5 text-blue-700 border-blue-200 text-xs font-normal">
                             📚 Offered
                         </Badge>
                     )}
                 </div>
             </div>
 
-            {/* Title + Creator */}
-            <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-foreground mb-2">
-                {crashCourse.title}
-            </h1>
-            <div className="flex items-center gap-2 text-muted-foreground mb-6">
-                <span>
-                    {crashCourse.origin === "demand" ? "Requested by" : "Offered by"}{" "}
-                    <Link
-                        href={`/profile/${crashCourse.creator?._id}`}
-                        className="font-medium text-foreground hover:underline"
-                    >
-                        {crashCourse.creator?.name ?? "Unknown"}
-                    </Link>
-                </span>
-                {crashCourse.course && (
-                    <>
-                        <span>·</span>
-                        <span>{crashCourse.course.code} — {crashCourse.course.name}</span>
-                    </>
-                )}
-            </div>
+            {/* ═══ Two-Column Layout ═══ */}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
 
-            {/* Schedule & Price Card (if set) */}
-            {(crashCourse.scheduledAt || crashCourse.pricePerStudent) && (
-                <Card className="glass-card border-none mb-6">
-                    <CardContent className="p-5">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            {crashCourse.scheduledAt && (
-                                <div className="flex items-center gap-2">
-                                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                                    <div>
-                                        <p className="text-sm font-medium text-foreground">
-                                            {new Date(crashCourse.scheduledAt).toLocaleDateString("en-US", {
-                                                weekday: "short",
-                                                month: "short",
-                                                day: "numeric",
-                                            })}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {new Date(crashCourse.scheduledAt).toLocaleTimeString("en-US", {
-                                                hour: "numeric",
-                                                minute: "2-digit",
-                                            })}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-                            {crashCourse.duration && (
-                                <div className="flex items-center gap-2">
-                                    <Clock className="h-4 w-4 text-muted-foreground" />
-                                    <div>
-                                        <p className="text-sm font-medium text-foreground">
-                                            {crashCourse.duration >= 60
-                                                ? `${Math.floor(crashCourse.duration / 60)}h${crashCourse.duration % 60 ? ` ${crashCourse.duration % 60}m` : ""}`
-                                                : `${crashCourse.duration}m`}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">Duration</p>
-                                    </div>
-                                </div>
-                            )}
-                            {crashCourse.location && (
-                                <div className="flex items-center gap-2">
-                                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                                    <div>
-                                        <p className="text-sm font-medium text-foreground">{crashCourse.location}</p>
-                                        <p className="text-xs text-muted-foreground">Location</p>
-                                    </div>
-                                </div>
-                            )}
-                            {crashCourse.pricePerStudent && (
-                                <div>
-                                    <p className="text-lg font-bold text-foreground">
-                                        PKR {crashCourse.pricePerStudent.toLocaleString()}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">per student</p>
-                                </div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+                {/* ── Main Content (left) ── */}
+                <div className="lg:col-span-3 space-y-8">
 
-            {/* Demand-side preferences (if no tutor selected yet) */}
-            {crashCourse.origin === "demand" &&
-                !crashCourse.selectedTutorId &&
-                (crashCourse.budgetPerStudent || crashCourse.preferredDateRange || crashCourse.preferredDuration) && (
-                    <Card className="glass-card border-none mb-6 border-l-4 border-l-amber-500/50">
-                        <CardContent className="p-5">
-                            <h3 className="text-sm font-semibold text-muted-foreground mb-3">Student Preferences</h3>
-                            <div className="flex flex-wrap gap-4 text-sm">
-                                {crashCourse.preferredDateRange && (
-                                    <span>📅 {crashCourse.preferredDateRange}</span>
-                                )}
-                                {crashCourse.preferredDuration && (
-                                    <span>⏱ ~{crashCourse.preferredDuration} minutes</span>
-                                )}
-                                {crashCourse.budgetPerStudent && (
-                                    <span>💰 ~PKR {crashCourse.budgetPerStudent.toLocaleString()}/student</span>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
-            {/* Confirmation deadline warning */}
-            {crashCourse.status === "confirming" && crashCourse.confirmationDeadline && (
-                <div className="mb-6 p-4 rounded-xl bg-violet-500/10 border border-violet-200/50">
-                    <p className="text-sm font-medium text-violet-700">
-                        ⚠ Confirm your spot by{" "}
-                        {new Date(crashCourse.confirmationDeadline).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                        })}{" "}
-                        ({formatDistanceToNow(new Date(crashCourse.confirmationDeadline), { addSuffix: true })})
-                    </p>
-                </div>
-            )}
-
-            {/* Tutor Review Panel (demand-side, low enrollment) */}
-            {crashCourse.status === "pending_tutor_review" && isSelectedTutor && (
-                <Card className="mb-6 border-orange-300/50 bg-orange-50/50">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg text-orange-800">⚠ Low Enrollment — Your Decision Required</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <p className="text-sm text-orange-800/80">
-                            Only <strong>{crashCourse.currentEnrollment}</strong> student(s) confirmed
-                            {crashCourse.minEnrollment ? (
-                                <> out of {crashCourse.minEnrollment} required.</>
-                            ) : (
-                                <>.</>  
-                            )}{" "}
-                            Choose how to proceed:
-                        </p>
-                        <div className="flex flex-wrap gap-3">
-                            <Button
-                                onClick={() => handleTutorReview("accept")}
-                                disabled={isReviewing}
-                                className="rounded-full bg-emerald-600 text-white hover:bg-emerald-700 font-semibold"
-                            >
-                                <Check className="h-4 w-4 mr-2" />
-                                Accept ({crashCourse.currentEnrollment} student{crashCourse.currentEnrollment !== 1 ? "s" : ""})
-                            </Button>
-
-                            <Dialog open={renegotiateDialogOpen} onOpenChange={setRenegotiateDialogOpen}>
-                                <DialogTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        disabled={isReviewing}
-                                        className="rounded-full border-orange-300 text-orange-700 hover:bg-orange-100 font-semibold"
-                                    >
-                                        Renegotiate Price
-                                    </Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                    <DialogHeader>
-                                        <DialogTitle>Renegotiate Price</DialogTitle>
-                                    </DialogHeader>
-                                    <div className="space-y-4 pt-2">
-                                        <p className="text-sm text-muted-foreground">
-                                            Current price: <strong>PKR {crashCourse.pricePerStudent?.toLocaleString()}</strong> per student.
-                                            Set a new price and students will have 24 hours to re-confirm.
-                                        </p>
-                                        <div className="space-y-2">
-                                            <Label>New Price per Student (PKR)</Label>
-                                            <Input
-                                                type="number"
-                                                value={renegotiatePrice}
-                                                onChange={(e) => setRenegotiatePrice(e.target.value)}
-                                                placeholder={String((crashCourse.pricePerStudent ?? 0) * 1.5)}
-                                                min={1}
-                                            />
-                                        </div>
-                                        <Button
-                                            onClick={() => handleTutorReview("renegotiate")}
-                                            disabled={isReviewing}
-                                            className="w-full rounded-full h-11 bg-orange-600 text-white hover:bg-orange-700 font-semibold"
-                                        >
-                                            {isReviewing ? "Submitting..." : "Propose New Price →"}
-                                        </Button>
-                                    </div>
-                                </DialogContent>
-                            </Dialog>
-
-                            <Button
-                                variant="outline"
-                                onClick={() => handleTutorReview("cancel")}
-                                disabled={isReviewing}
-                                className="rounded-full text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Cancel (No Penalty)
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Student banner: tutor is reviewing */}
-            {crashCourse.status === "pending_tutor_review" && !isSelectedTutor && isEnrolled && (
-                <div className="mb-6 p-4 rounded-xl bg-orange-500/10 border border-orange-200/50">
-                    <p className="text-sm font-medium text-orange-700">
-                        ⏳ The tutor is reviewing enrollment numbers. You&apos;ll be notified of the outcome.
-                    </p>
-                </div>
-            )}
-
-            {/* Description */}
-            <div className="mb-6">
-                <p className="text-foreground/80 whitespace-pre-wrap">{crashCourse.description}</p>
-            </div>
-
-            {/* Topics */}
-            <div className="mb-8">
-                <h3 className="text-sm font-semibold text-muted-foreground mb-3">
-                    {crashCourse.origin === "demand" ? "Topics Needed" : "Topics Covered"}
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                    {crashCourse.topics.map((topic) => (
-                        <Badge key={topic} variant="secondary" className="px-3 py-1">
-                            {topic}
-                        </Badge>
-                    ))}
-                </div>
-            </div>
-
-            {/* Enrollment Bar */}
-            <div className="mb-8">
-                <EnrollmentBar
-                    current={crashCourse.currentEnrollment}
-                    max={crashCourse.maxEnrollment}
-                    min={crashCourse.minEnrollment}
-                    label={crashCourse.origin === "supply" ? "Enrollment" : undefined}
-                />
-            </div>
-
-            {/* Tutor Profile (if selected) */}
-            {crashCourse.tutor && (
-                <Card className="glass-card border-none mb-8">
-                    <CardContent className="p-5">
-                        <h3 className="text-sm font-semibold text-muted-foreground mb-3">
-                            {crashCourse.origin === "supply" ? "Instructor" : "Selected Tutor"}
-                        </h3>
-                        <div className="flex items-center gap-4">
-                            <Avatar className="h-12 w-12">
-                                <AvatarImage src={crashCourse.tutor.image} />
-                                <AvatarFallback>{crashCourse.tutor.name?.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                    <Link
-                                        href={`/profile/${crashCourse.tutor._id}`}
-                                        className="font-semibold text-foreground hover:underline"
-                                    >
-                                        {crashCourse.tutor.name}
-                                    </Link>
-                                    {crashCourse.tutor.isVerified && (
-                                        <Shield className="h-4 w-4 text-blue-500" />
+                    {/* Student Preferences banner (demand-side, pre-tutor) */}
+                    {crashCourse.origin === "demand" &&
+                        !crashCourse.selectedTutorId &&
+                        (crashCourse.budgetPerStudent || crashCourse.preferredDateRange || crashCourse.preferredDuration) && (
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/5 border border-amber-200/30">
+                                <span className="text-sm font-semibold text-amber-800 shrink-0">Student Preferences</span>
+                                <div className="flex flex-wrap items-center gap-3 text-sm text-amber-700/90">
+                                    {crashCourse.preferredDateRange && (
+                                        <span className="flex items-center gap-1.5">
+                                            <Calendar className="h-3.5 w-3.5" />
+                                            {crashCourse.preferredDateRange}
+                                        </span>
                                     )}
-                                    {crashCourse.tutor.isOnline && (
-                                        <span className="flex items-center gap-1 text-xs text-emerald-600">
-                                            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                                            Online
+                                    {crashCourse.preferredDuration && (
+                                        <span className="flex items-center gap-1.5">
+                                            <Clock className="h-3.5 w-3.5" />
+                                            ~{crashCourse.preferredDuration} min
+                                        </span>
+                                    )}
+                                    {crashCourse.budgetPerStudent && (
+                                        <span className="flex items-center gap-1.5">
+                                            💰 ~PKR {crashCourse.budgetPerStudent.toLocaleString()}/student
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
-                                    {crashCourse.tutor.reputation?.toFixed(1) ?? "N/A"}
-                                </div>
                             </div>
-                            <Link href={`/profile/${crashCourse.tutor._id}`}>
-                                <Button variant="outline" size="sm" className="rounded-full">
-                                    View Profile
-                                </Button>
-                            </Link>
+                        )}
+
+                    {/* Description */}
+                    {crashCourse.description && (
+                        <div>
+                            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                                Description
+                            </h2>
+                            <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap">
+                                {crashCourse.description}
+                            </p>
                         </div>
-                    </CardContent>
-                </Card>
-            )}
+                    )}
 
-            {/* ═══ Demand-side: Applications / Voting Section ═══ */}
-            {crashCourse.origin === "demand" &&
-                (crashCourse.status === "requesting" ||
-                    crashCourse.status === "voting" ||
-                    crashCourse.status === "confirming") && (
-                    <div className="mb-8">
-                        <Separator className="mb-8" />
-                        <VotingSection
-                            crashCourseId={crashCourseId}
-                            topics={crashCourse.topics}
-                            votingDeadline={crashCourse.votingDeadline}
-                            status={crashCourse.status}
-                            isEnrolled={!!isEnrolled}
-                        />
-                    </div>
-                )}
-
-            {/* Enrolled Students */}
-            {enrollments && enrollments.length > 0 && (
-                <div className="mb-8">
-                    <h3 className="text-sm font-semibold text-muted-foreground mb-3">
-                        {crashCourse.origin === "supply" ? "Enrolled Students" : "Interested Students"} ({enrollments.length})
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                        {enrollments.slice(0, 20).map((enrollment) => (
-                            <div
-                                key={enrollment._id}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-foreground/5"
-                            >
-                                <Avatar className="h-6 w-6">
-                                    <AvatarImage src={enrollment.student?.image} />
-                                    <AvatarFallback className="text-xs">
-                                        {enrollment.student?.name?.charAt(0)}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <span className="text-sm">{enrollment.student?.name}</span>
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                    {enrollment.status === "interested"
-                                        ? "Interested"
-                                        : enrollment.status === "pending_confirmation"
-                                            ? "Pending"
-                                            : "Enrolled"}
-                                </Badge>
-                            </div>
-                        ))}
-                        {enrollments.length > 20 && (
-                            <span className="text-sm text-muted-foreground px-3 py-1.5">
-                                +{enrollments.length - 20} more
+                    {/* Topics */}
+                    <div>
+                        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                            {crashCourse.origin === "demand" ? "Topics Needed" : "Topics Covered"}
+                            <span className="text-muted-foreground/50 font-normal normal-case ml-1">
+                                · {crashCourse.topics.length}
                             </span>
-                        )}
+                        </h2>
+                        <div className="flex flex-wrap gap-2">
+                            {crashCourse.topics.map((topic) => (
+                                <Badge key={topic} variant="secondary" className="px-3 py-1">
+                                    {topic}
+                                </Badge>
+                            ))}
+                        </div>
                     </div>
-                </div>
-            )}
 
-            <Separator className="my-8" />
+                    {/* Tutor Profile (if selected) */}
+                    {crashCourse.tutor && (
+                        <Card className="border border-border/50">
+                            <CardContent className="p-5">
+                                <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+                                    {crashCourse.origin === "supply" ? "Instructor" : "Selected Tutor"}
+                                </h2>
+                                <div className="flex items-center gap-4">
+                                    <Avatar className="h-12 w-12">
+                                        <AvatarImage src={crashCourse.tutor.image} />
+                                        <AvatarFallback>{crashCourse.tutor.name?.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <Link
+                                                href={`/profile/${crashCourse.tutor._id}`}
+                                                className="font-semibold text-foreground hover:underline truncate"
+                                            >
+                                                {crashCourse.tutor.name}
+                                            </Link>
+                                            {crashCourse.tutor.isVerified && (
+                                                <Shield className="h-4 w-4 text-blue-500 shrink-0" />
+                                            )}
+                                            {crashCourse.tutor.isOnline && (
+                                                <span className="flex items-center gap-1 text-xs text-emerald-600 shrink-0">
+                                                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                                                    Online
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                            <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                                            {crashCourse.tutor.reputation?.toFixed(1) ?? "N/A"}
+                                        </div>
+                                    </div>
+                                    <Link href={`/profile/${crashCourse.tutor._id}`}>
+                                        <Button variant="outline" size="sm" className="rounded-full shrink-0">
+                                            View Profile
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
-            {/* ═══ Action Buttons ═══ */}
-            <div className="flex flex-wrap gap-3">
-                {/* Enroll / Express Interest (student actions) */}
-                {!isEnrolled && !isCreator && !isSelectedTutor && !isTutorRole && (
-                    <>
-                        {crashCourse.origin === "supply" && crashCourse.status === "open" && (
-                            <Button
-                                onClick={handleEnroll}
-                                disabled={isEnrolling}
-                                className="rounded-full px-6 h-11 bg-foreground text-background hover:bg-foreground/90 font-semibold"
-                            >
-                                {isEnrolling ? "Enrolling..." : `Enroll — PKR ${crashCourse.pricePerStudent?.toLocaleString() ?? "TBD"}`}
-                            </Button>
+                    {/* Voting / Applications Section (demand-side) */}
+                    {crashCourse.origin === "demand" &&
+                        (crashCourse.status === "requesting" ||
+                            crashCourse.status === "voting" ||
+                            crashCourse.status === "confirming") && (
+                            <div>
+                                <Separator className="mb-8" />
+                                <VotingSection
+                                    crashCourseId={crashCourseId}
+                                    topics={crashCourse.topics}
+                                    votingDeadline={crashCourse.votingDeadline}
+                                    status={crashCourse.status}
+                                    isEnrolled={!!isEnrolled}
+                                />
+                            </div>
                         )}
-                        {crashCourse.origin === "demand" &&
-                            (crashCourse.status === "requesting" || crashCourse.status === "voting") && (
-                                <Button
-                                    onClick={handleEnroll}
-                                    disabled={isEnrolling}
-                                    className="rounded-full px-6 h-11 bg-amber-600 text-white hover:bg-amber-700 font-semibold"
-                                >
-                                    {isEnrolling ? "Joining..." : "Join & Vote"}
-                                </Button>
-                            )}
-                    </>
-                )}
 
-                {/* Confirm Enrollment (demand confirming phase) */}
-                {isPendingConfirmation && crashCourse.status === "confirming" && (
-                    <Button
-                        onClick={handleConfirmEnrollment}
-                        className="rounded-full px-6 h-11 bg-emerald-600 text-white hover:bg-emerald-700 font-semibold"
-                    >
-                        <Check className="h-4 w-4 mr-2" />
-                        Confirm Enrollment — PKR {crashCourse.pricePerStudent?.toLocaleString() ?? "TBD"}
-                    </Button>
-                )}
+                    {/* Interested / Enrolled Students — Avatar Stack */}
+                    {enrollments && enrollments.length > 0 && (
+                        <div>
+                            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                                {crashCourse.origin === "supply" ? "Enrolled Students" : "Interested Students"}
+                                <span className="text-muted-foreground/50 font-normal normal-case ml-1">
+                                    · {enrollments.length}
+                                </span>
+                            </h2>
+                            <div className="flex items-center">
+                                <div className="flex -space-x-2">
+                                    {enrollments.slice(0, 10).map((enrollment) => (
+                                        <Avatar
+                                            key={enrollment._id}
+                                            className="h-9 w-9 border-2 border-background ring-0"
+                                            title={`${enrollment.student?.name ?? "Student"} — ${
+                                                enrollment.status === "interested"
+                                                    ? "Interested"
+                                                    : enrollment.status === "pending_confirmation"
+                                                        ? "Pending"
+                                                        : "Enrolled"
+                                            }`}
+                                        >
+                                            <AvatarImage src={enrollment.student?.image} />
+                                            <AvatarFallback className="text-xs">
+                                                {enrollment.student?.name?.charAt(0)}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                    ))}
+                                </div>
+                                {enrollments.length > 10 && (
+                                    <span className="ml-3 text-sm text-muted-foreground">
+                                        +{enrollments.length - 10} more
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
 
-                {/* Withdraw */}
-                {isEnrolled && !isCreator && !isTutorRole && crashCourse.status !== "completed" && crashCourse.status !== "cancelled" && (
-                    <Button variant="outline" className="rounded-full" onClick={handleWithdraw}>
-                        Withdraw
-                    </Button>
-                )}
+                {/* ── Sidebar (right, sticky) ── */}
+                <div className="lg:col-span-2">
+                    <div className="sticky top-24 space-y-4">
 
-                {/* Tutor: Apply to demand-side */}
-                {!isCreator &&
-                    !isSelectedTutor &&
-                    isTutorRole &&
-                    crashCourse.origin === "demand" &&
-                    crashCourse.status === "requesting" && (
-                        <Dialog open={applyDialogOpen} onOpenChange={setApplyDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button className="rounded-full px-6 h-11 bg-blue-600 text-white hover:bg-blue-700 font-semibold">
-                                    <GraduationCap className="h-4 w-4 mr-2" />
-                                    Apply to Teach
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                                <DialogHeader>
-                                    <DialogTitle>Apply to Teach</DialogTitle>
-                                </DialogHeader>
-                                <form onSubmit={handleApply} className="space-y-4 mt-4">
-                                    {crashCourse.budgetPerStudent && (
-                                        <p className="text-sm text-muted-foreground">
-                                            💡 Student budget hint: ~PKR {crashCourse.budgetPerStudent.toLocaleString()}/student
+                        {/* Buy-box Card: Price + Schedule + Enrollment + Actions */}
+                        <Card className="border border-border/50 shadow-sm">
+                            <CardContent className="p-5 space-y-5">
+
+                                {/* Price */}
+                                {crashCourse.pricePerStudent ? (
+                                    <div>
+                                        <p className="text-3xl font-bold text-foreground tracking-tight">
+                                            PKR {crashCourse.pricePerStudent.toLocaleString()}
                                         </p>
+                                        <p className="text-sm text-muted-foreground">per student</p>
+                                    </div>
+                                ) : crashCourse.origin === "demand" && crashCourse.budgetPerStudent ? (
+                                    <div>
+                                        <p className="text-lg font-semibold text-muted-foreground">
+                                            Budget ~PKR {crashCourse.budgetPerStudent.toLocaleString()}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">per student (estimate)</p>
+                                    </div>
+                                ) : null}
+
+                                {/* Schedule details */}
+                                {(crashCourse.scheduledAt || crashCourse.duration || crashCourse.location) && (
+                                    <div className="space-y-3 pt-1">
+                                        {crashCourse.scheduledAt && (
+                                            <div className="flex items-start gap-3">
+                                                <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                                                <div>
+                                                    <p className="text-sm font-medium text-foreground">
+                                                        {new Date(crashCourse.scheduledAt).toLocaleDateString("en-US", {
+                                                            weekday: "long",
+                                                            month: "short",
+                                                            day: "numeric",
+                                                        })}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {new Date(crashCourse.scheduledAt).toLocaleTimeString("en-US", {
+                                                            hour: "numeric",
+                                                            minute: "2-digit",
+                                                        })}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {crashCourse.duration && (
+                                            <div className="flex items-center gap-3">
+                                                <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                <p className="text-sm text-foreground">
+                                                    {crashCourse.duration >= 60
+                                                        ? `${Math.floor(crashCourse.duration / 60)}h${crashCourse.duration % 60 ? ` ${crashCourse.duration % 60}m` : ""}`
+                                                        : `${crashCourse.duration}m`}
+                                                </p>
+                                            </div>
+                                        )}
+                                        {crashCourse.location && (
+                                            <div className="flex items-center gap-3">
+                                                <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                <p className="text-sm text-foreground">{crashCourse.location}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Enrollment */}
+                                <div className="pt-3 border-t border-border/40">
+                                    <EnrollmentBar
+                                        current={crashCourse.currentEnrollment}
+                                        max={crashCourse.maxEnrollment}
+                                        min={crashCourse.minEnrollment}
+                                        label={crashCourse.origin === "supply" ? "Enrollment" : undefined}
+                                    />
+                                </div>
+
+                                {/* ── Action Buttons ── */}
+                                <div className="pt-3 border-t border-border/40 space-y-2">
+                                    {/* Student: Enroll / Express Interest */}
+                                    {!isEnrolled && !isCreator && !isSelectedTutor && !isTutorRole && (
+                                        <>
+                                            {crashCourse.origin === "supply" && crashCourse.status === "open" && (
+                                                <Button
+                                                    onClick={handleEnroll}
+                                                    disabled={isEnrolling}
+                                                    className="w-full rounded-full h-11 bg-foreground text-background hover:bg-foreground/90 font-semibold"
+                                                >
+                                                    {isEnrolling ? "Enrolling..." : `Enroll — PKR ${crashCourse.pricePerStudent?.toLocaleString() ?? "TBD"}`}
+                                                </Button>
+                                            )}
+                                            {crashCourse.origin === "demand" &&
+                                                (crashCourse.status === "requesting" || crashCourse.status === "voting") && (
+                                                    <Button
+                                                        onClick={handleEnroll}
+                                                        disabled={isEnrolling}
+                                                        className="w-full rounded-full h-11 bg-amber-600 text-white hover:bg-amber-700 font-semibold"
+                                                    >
+                                                        {isEnrolling ? "Joining..." : "Join & Vote"}
+                                                    </Button>
+                                                )}
+                                        </>
                                     )}
 
+                                    {/* Confirm Enrollment */}
+                                    {isPendingConfirmation && crashCourse.status === "confirming" && (
+                                        <Button
+                                            onClick={handleConfirmEnrollment}
+                                            className="w-full rounded-full h-11 bg-emerald-600 text-white hover:bg-emerald-700 font-semibold"
+                                        >
+                                            <Check className="h-4 w-4 mr-2" />
+                                            Confirm — PKR {crashCourse.pricePerStudent?.toLocaleString() ?? "TBD"}
+                                        </Button>
+                                    )}
+
+                                    {/* Withdraw */}
+                                    {isEnrolled && !isCreator && !isTutorRole &&
+                                        crashCourse.status !== "completed" && crashCourse.status !== "cancelled" && (
+                                            <Button variant="outline" className="w-full rounded-full" onClick={handleWithdraw}>
+                                                Withdraw
+                                            </Button>
+                                        )}
+
+                                    {/* Tutor: Apply to teach (demand-side) */}
+                                    {!isCreator &&
+                                        !isSelectedTutor &&
+                                        isTutorRole &&
+                                        crashCourse.origin === "demand" &&
+                                        crashCourse.status === "requesting" && (
+                                            <Dialog open={applyDialogOpen} onOpenChange={setApplyDialogOpen}>
+                                                <DialogTrigger asChild>
+                                                    <Button className="w-full rounded-full h-11 bg-blue-600 text-white hover:bg-blue-700 font-semibold">
+                                                        <GraduationCap className="h-4 w-4 mr-2" />
+                                                        Apply to Teach
+                                                    </Button>
+                                                </DialogTrigger>
+                                                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                                                    <DialogHeader>
+                                                        <DialogTitle>Apply to Teach</DialogTitle>
+                                                    </DialogHeader>
+                                                    <form onSubmit={handleApply} className="space-y-4 mt-4">
+                                                        {crashCourse.budgetPerStudent && (
+                                                            <p className="text-sm text-muted-foreground">
+                                                                💡 Budget hint: ~PKR {crashCourse.budgetPerStudent.toLocaleString()}/student
+                                                            </p>
+                                                        )}
+                                                        <div className="space-y-2">
+                                                            <Label>Price per Student (PKR) *</Label>
+                                                            <Input
+                                                                type="number"
+                                                                value={proposedPrice}
+                                                                onChange={(e) => setProposedPrice(e.target.value)}
+                                                                placeholder="350"
+                                                                required
+                                                                min={1}
+                                                            />
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <div className="space-y-2">
+                                                                <Label>Date *</Label>
+                                                                <Input
+                                                                    type="date"
+                                                                    value={proposedDate}
+                                                                    onChange={(e) => setProposedDate(e.target.value)}
+                                                                    required
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Time *</Label>
+                                                                <Input
+                                                                    type="time"
+                                                                    value={proposedTime}
+                                                                    onChange={(e) => setProposedTime(e.target.value)}
+                                                                    required
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <div className="space-y-2">
+                                                                <Label>Duration (min) *</Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    value={proposedDuration}
+                                                                    onChange={(e) => setProposedDuration(e.target.value)}
+                                                                    required
+                                                                    min={15}
+                                                                    max={480}
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Location</Label>
+                                                                <Input
+                                                                    value={proposedLocation}
+                                                                    onChange={(e) => setProposedLocation(e.target.value)}
+                                                                    placeholder="Zoom / Room"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <div className="space-y-2">
+                                                                <Label>Min Students</Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    value={proposedMinEnrollment}
+                                                                    onChange={(e) => setProposedMinEnrollment(e.target.value)}
+                                                                    placeholder="e.g. 8"
+                                                                    min={1}
+                                                                    max={200}
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Max Students</Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    value={proposedMaxEnrollment}
+                                                                    onChange={(e) => setProposedMaxEnrollment(e.target.value)}
+                                                                    placeholder="e.g. 30"
+                                                                    min={2}
+                                                                    max={200}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label>Topics you&apos;ll cover *</Label>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {crashCourse.topics.map((topic) => (
+                                                                    <Badge
+                                                                        key={topic}
+                                                                        variant={selectedTopics.includes(topic) ? "default" : "outline"}
+                                                                        className={`cursor-pointer transition-colors ${
+                                                                            selectedTopics.includes(topic)
+                                                                                ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                                                                                : "hover:bg-foreground/5"
+                                                                        }`}
+                                                                        onClick={() => toggleTopic(topic)}
+                                                                    >
+                                                                        {selectedTopics.includes(topic) && <Check className="h-3 w-3 mr-1" />}
+                                                                        {topic}
+                                                                    </Badge>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label>Your Pitch *</Label>
+                                                            <Textarea
+                                                                value={pitch}
+                                                                onChange={(e) => setPitch(e.target.value)}
+                                                                placeholder="Why should students pick you? Mention your experience with this course..."
+                                                                required
+                                                                rows={4}
+                                                                maxLength={5000}
+                                                            />
+                                                        </div>
+                                                        <Button
+                                                            type="submit"
+                                                            disabled={isApplying}
+                                                            className="w-full rounded-full h-11 font-semibold"
+                                                        >
+                                                            {isApplying ? "Submitting..." : "Submit Application →"}
+                                                        </Button>
+                                                    </form>
+                                                </DialogContent>
+                                            </Dialog>
+                                        )}
+
+                                    {/* Creator: Start Voting */}
+                                    {isCreator && crashCourse.status === "requesting" && (
+                                        <Button
+                                            onClick={handleStartVoting}
+                                            className="w-full rounded-full h-11 font-semibold"
+                                        >
+                                            <Vote className="h-4 w-4 mr-2" />
+                                            Open Voting
+                                        </Button>
+                                    )}
+
+                                    {/* Lock In */}
+                                    {(isCreator || isSelectedTutor) &&
+                                        (crashCourse.status === "confirming" || crashCourse.status === "pending_tutor_review") && (
+                                            <Button
+                                                onClick={() => handleLockIn()}
+                                                className="w-full rounded-full h-11 bg-emerald-600 text-white hover:bg-emerald-700 font-semibold"
+                                            >
+                                                <Check className="h-4 w-4 mr-2" />
+                                                Lock In & Confirm
+                                            </Button>
+                                        )}
+
+                                    {/* Start Session */}
+                                    {(isSelectedTutor || isCreator) && crashCourse.status === "confirmed" && (
+                                        <Button
+                                            onClick={handleStart}
+                                            className="w-full rounded-full h-11 bg-teal-600 text-white hover:bg-teal-700 font-semibold"
+                                        >
+                                            <Play className="h-4 w-4 mr-2" />
+                                            Start Session
+                                        </Button>
+                                    )}
+
+                                    {/* Complete */}
+                                    {(isSelectedTutor || isCreator) && crashCourse.status === "in_progress" && (
+                                        <Button
+                                            onClick={handleComplete}
+                                            className="w-full rounded-full h-11 font-semibold"
+                                        >
+                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                            Mark Completed
+                                        </Button>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Confirmation deadline alert */}
+                        {crashCourse.status === "confirming" && crashCourse.confirmationDeadline && (
+                            <div className="p-4 rounded-xl bg-violet-500/10 border border-violet-200/50">
+                                <p className="text-sm font-medium text-violet-700">
+                                    ⚠ Confirm by{" "}
+                                    {new Date(crashCourse.confirmationDeadline).toLocaleDateString("en-US", {
+                                        month: "short",
+                                        day: "numeric",
+                                        hour: "numeric",
+                                        minute: "2-digit",
+                                    })}{" "}
+                                    ({formatDistanceToNow(new Date(crashCourse.confirmationDeadline), { addSuffix: true })})
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Tutor Review Panel (low enrollment) */}
+                        {crashCourse.status === "pending_tutor_review" && isSelectedTutor && (
+                            <Card className="border-orange-300/50 bg-orange-50/5">
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-base text-orange-700">⚠ Low Enrollment</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <p className="text-sm text-orange-700/80">
+                                        Only <strong>{crashCourse.currentEnrollment}</strong> confirmed
+                                        {crashCourse.minEnrollment ? (
+                                            <> of {crashCourse.minEnrollment} needed.</>
+                                        ) : (
+                                            <>.</>
+                                        )}
+                                    </p>
                                     <div className="space-y-2">
-                                        <Label>Price per Student (PKR) *</Label>
-                                        <Input
-                                            type="number"
-                                            value={proposedPrice}
-                                            onChange={(e) => setProposedPrice(e.target.value)}
-                                            placeholder="350"
-                                            required
-                                            min={1}
-                                        />
-                                    </div>
+                                        <Button
+                                            onClick={() => handleTutorReview("accept")}
+                                            disabled={isReviewing}
+                                            size="sm"
+                                            className="w-full rounded-full bg-emerald-600 text-white hover:bg-emerald-700 font-semibold"
+                                        >
+                                            <Check className="h-4 w-4 mr-2" />
+                                            Accept ({crashCourse.currentEnrollment} student{crashCourse.currentEnrollment !== 1 ? "s" : ""})
+                                        </Button>
 
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="space-y-2">
-                                            <Label>Date *</Label>
-                                            <Input
-                                                type="date"
-                                                value={proposedDate}
-                                                onChange={(e) => setProposedDate(e.target.value)}
-                                                required
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Time *</Label>
-                                            <Input
-                                                type="time"
-                                                value={proposedTime}
-                                                onChange={(e) => setProposedTime(e.target.value)}
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="space-y-2">
-                                            <Label>Duration (min) *</Label>
-                                            <Input
-                                                type="number"
-                                                value={proposedDuration}
-                                                onChange={(e) => setProposedDuration(e.target.value)}
-                                                required
-                                                min={15}
-                                                max={480}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Location</Label>
-                                            <Input
-                                                value={proposedLocation}
-                                                onChange={(e) => setProposedLocation(e.target.value)}
-                                                placeholder="Zoom / Room"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="space-y-2">
-                                            <Label>Min Students to Run</Label>
-                                            <Input
-                                                type="number"
-                                                value={proposedMinEnrollment}
-                                                onChange={(e) => setProposedMinEnrollment(e.target.value)}
-                                                placeholder="e.g. 8 (optional)"
-                                                min={1}
-                                                max={200}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Max Students</Label>
-                                            <Input
-                                                type="number"
-                                                value={proposedMaxEnrollment}
-                                                onChange={(e) => setProposedMaxEnrollment(e.target.value)}
-                                                placeholder="e.g. 30 (optional)"
-                                                min={2}
-                                                max={200}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label>Topics you&apos;ll cover * (click to select)</Label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {crashCourse.topics.map((topic) => (
-                                                <Badge
-                                                    key={topic}
-                                                    variant={selectedTopics.includes(topic) ? "default" : "outline"}
-                                                    className={`cursor-pointer transition-colors ${
-                                                        selectedTopics.includes(topic)
-                                                            ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                                                            : "hover:bg-foreground/5"
-                                                    }`}
-                                                    onClick={() => toggleTopic(topic)}
+                                        <Dialog open={renegotiateDialogOpen} onOpenChange={setRenegotiateDialogOpen}>
+                                            <DialogTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    disabled={isReviewing}
+                                                    size="sm"
+                                                    className="w-full rounded-full border-orange-300 text-orange-700 hover:bg-orange-100 font-semibold"
                                                 >
-                                                    {selectedTopics.includes(topic) && <Check className="h-3 w-3 mr-1" />}
-                                                    {topic}
-                                                </Badge>
-                                            ))}
-                                        </div>
+                                                    Renegotiate Price
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle>Renegotiate Price</DialogTitle>
+                                                </DialogHeader>
+                                                <div className="space-y-4 pt-2">
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Current: <strong>PKR {crashCourse.pricePerStudent?.toLocaleString()}</strong>/student.
+                                                        Students get 24h to re-confirm.
+                                                    </p>
+                                                    <div className="space-y-2">
+                                                        <Label>New Price per Student (PKR)</Label>
+                                                        <Input
+                                                            type="number"
+                                                            value={renegotiatePrice}
+                                                            onChange={(e) => setRenegotiatePrice(e.target.value)}
+                                                            placeholder={String((crashCourse.pricePerStudent ?? 0) * 1.5)}
+                                                            min={1}
+                                                        />
+                                                    </div>
+                                                    <Button
+                                                        onClick={() => handleTutorReview("renegotiate")}
+                                                        disabled={isReviewing}
+                                                        className="w-full rounded-full h-11 bg-orange-600 text-white hover:bg-orange-700 font-semibold"
+                                                    >
+                                                        {isReviewing ? "Submitting..." : "Propose New Price →"}
+                                                    </Button>
+                                                </div>
+                                            </DialogContent>
+                                        </Dialog>
+
+                                        <Button
+                                            variant="ghost"
+                                            onClick={() => handleTutorReview("cancel")}
+                                            disabled={isReviewing}
+                                            size="sm"
+                                            className="w-full rounded-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        >
+                                            <XCircle className="h-4 w-4 mr-2" />
+                                            Cancel (No Penalty)
+                                        </Button>
                                     </div>
+                                </CardContent>
+                            </Card>
+                        )}
 
-                                    <div className="space-y-2">
-                                        <Label>Your Pitch *</Label>
-                                        <Textarea
-                                            value={pitch}
-                                            onChange={(e) => setPitch(e.target.value)}
-                                            placeholder="Why should students pick you? Mention your experience with this course..."
-                                            required
-                                            rows={4}
-                                            maxLength={5000}
-                                        />
-                                    </div>
+                        {/* Student banner: tutor reviewing */}
+                        {crashCourse.status === "pending_tutor_review" && !isSelectedTutor && isEnrolled && (
+                            <div className="p-4 rounded-xl bg-orange-500/10 border border-orange-200/50">
+                                <p className="text-sm font-medium text-orange-700">
+                                    ⏳ Tutor is reviewing enrollment. You&apos;ll be notified soon.
+                                </p>
+                            </div>
+                        )}
 
-                                    <Button
-                                        type="submit"
-                                        disabled={isApplying}
-                                        className="w-full rounded-full h-11 font-semibold"
-                                    >
-                                        {isApplying ? "Submitting..." : "Submit Application →"}
-                                    </Button>
-                                </form>
-                            </DialogContent>
-                        </Dialog>
-                    )}
-
-                {/* Creator: Start Voting */}
-                {isCreator && crashCourse.status === "requesting" && (
-                    <Button
-                        onClick={handleStartVoting}
-                        className="rounded-full px-6 h-11 font-semibold"
-                    >
-                        <Vote className="h-4 w-4 mr-2" />
-                        Open Voting
-                    </Button>
-                )}
-
-                {/* Creator/Tutor: Lock In */}
-                {(isCreator || isSelectedTutor) && (crashCourse.status === "confirming" || crashCourse.status === "pending_tutor_review") && (
-                    <Button
-                        onClick={() => handleLockIn()}
-                        className="rounded-full px-6 h-11 bg-emerald-600 text-white hover:bg-emerald-700 font-semibold"
-                    >
-                        <Check className="h-4 w-4 mr-2" />
-                        Lock In & Confirm
-                    </Button>
-                )}
-
-                {/* Tutor: Start Session */}
-                {(isSelectedTutor || isCreator) && crashCourse.status === "confirmed" && (
-                    <Button
-                        onClick={handleStart}
-                        className="rounded-full px-6 h-11 bg-teal-600 text-white hover:bg-teal-700 font-semibold"
-                    >
-                        <Play className="h-4 w-4 mr-2" />
-                        Start Session
-                    </Button>
-                )}
-
-                {/* Complete */}
-                {(isSelectedTutor || isCreator) && crashCourse.status === "in_progress" && (
-                    <Button
-                        onClick={handleComplete}
-                        className="rounded-full px-6 h-11 font-semibold"
-                    >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Mark Completed
-                    </Button>
-                )}
-
-                {/* Cancel */}
-                {(isCreator || isSelectedTutor) &&
-                    crashCourse.status !== "completed" &&
-                    crashCourse.status !== "cancelled" && (
-                        <Button
-                            variant="outline"
-                            className="rounded-full text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={handleCancel}
-                        >
-                            <XCircle className="h-4 w-4 mr-2" />
-                            Cancel
-                        </Button>
-                    )}
+                        {/* Cancel — subtle link at sidebar bottom */}
+                        {(isCreator || isSelectedTutor) &&
+                            crashCourse.status !== "completed" &&
+                            crashCourse.status !== "cancelled" && (
+                                <button
+                                    onClick={handleCancel}
+                                    className="w-full text-center text-sm text-red-500/70 hover:text-red-600 transition-colors py-2"
+                                >
+                                    Cancel this crash course
+                                </button>
+                            )}
+                    </div>
+                </div>
             </div>
         </div>
     );

@@ -59,93 +59,75 @@ export default function ApplicationCard({
         : application.topicsCovered.length;
 
     return (
-        <Card className={`glass-card border-none overflow-hidden transition-all ${votedForThis ? "ring-2 ring-amber-500/50" : ""}`}>
+        <Card className={`border border-border/50 overflow-hidden transition-all ${votedForThis ? "ring-2 ring-amber-500/40" : ""}`}>
             <CardContent className="p-5">
-                {/* Header: Rank + Tutor Info */}
-                <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                        {rank <= 3 && (
-                            <span className="text-lg font-bold text-muted-foreground">
+                {/* Header: Rank + Tutor + Vote */}
+                <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                        {rank <= 3 ? (
+                            <span className="text-lg font-bold text-muted-foreground shrink-0">
                                 {rank === 1 ? "🏆" : rank === 2 ? "🥈" : "🥉"} #{rank}
                             </span>
-                        )}
-                        {rank > 3 && (
-                            <span className="text-sm font-bold text-muted-foreground">#{rank}</span>
+                        ) : (
+                            <span className="text-sm font-bold text-muted-foreground shrink-0">#{rank}</span>
                         )}
 
-                        <Avatar className="h-10 w-10">
+                        <Avatar className="h-10 w-10 shrink-0">
                             <AvatarImage src={tutor?.image} />
                             <AvatarFallback>{tutor?.name?.charAt(0) ?? "?"}</AvatarFallback>
                         </Avatar>
 
-                        <div>
+                        <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                                <span className="font-semibold text-foreground">{tutor?.name ?? "Unknown"}</span>
-                                {tutor?.isVerified && (
-                                    <Shield className="h-4 w-4 text-blue-500" />
-                                )}
-                                {tutor?.isOnline && (
-                                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                                )}
+                                <span className="font-semibold text-foreground truncate">{tutor?.name ?? "Unknown"}</span>
+                                {tutor?.isVerified && <Shield className="h-4 w-4 text-blue-500 shrink-0" />}
+                                {tutor?.isOnline && <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />}
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <Star className="h-3 w-3 text-amber-500 fill-amber-500" />
                                 <span>{tutor?.reputation?.toFixed(1) ?? "N/A"}</span>
-                                {tutor?.expertiseLevel && (
-                                    <>
-                                        <span>·</span>
-                                        <span>{tutor.expertiseLevel} in course</span>
-                                    </>
-                                )}
-                                <span>·</span>
+                                <span className="text-border">·</span>
                                 <span>{tutor?.completedJobs ?? 0} sessions</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Vote button */}
-                    {canVote && (
-                        <Button
-                            size="sm"
-                            variant={votedForThis ? "default" : "outline"}
-                            onClick={() => onVote(application._id)}
-                            disabled={isVoting || votedForThis}
-                            className={`rounded-full ${votedForThis ? "bg-amber-600 hover:bg-amber-700" : ""}`}
-                        >
-                            {votedForThis ? (
-                                <>
-                                    <Check className="h-4 w-4 mr-1" /> Voted
-                                </>
-                            ) : (
-                                "Vote"
-                            )}
-                        </Button>
-                    )}
-
-                    {application.status === "selected" && (
-                        <Badge className="bg-emerald-500/15 text-emerald-700 border-none">
-                            ✅ Selected
-                        </Badge>
-                    )}
-                    {application.status === "rejected" && (
-                        <Badge className="bg-red-500/15 text-red-700 border-none">
-                            Not Selected
-                        </Badge>
-                    )}
+                    <div className="shrink-0">
+                        {canVote && (
+                            <Button
+                                size="sm"
+                                variant={votedForThis ? "default" : "outline"}
+                                onClick={() => onVote(application._id)}
+                                disabled={isVoting || votedForThis}
+                                className={`rounded-full ${votedForThis ? "bg-amber-600 hover:bg-amber-700" : ""}`}
+                            >
+                                {votedForThis ? (
+                                    <><Check className="h-4 w-4 mr-1" /> Voted</>
+                                ) : (
+                                    "Vote"
+                                )}
+                            </Button>
+                        )}
+                        {application.status === "selected" && (
+                            <Badge className="bg-emerald-500/15 text-emerald-700 border-none">✅ Selected</Badge>
+                        )}
+                        {application.status === "rejected" && (
+                            <Badge className="bg-red-500/15 text-red-700 border-none">Not Selected</Badge>
+                        )}
+                    </div>
                 </div>
 
-                {/* Pitch */}
-                <p className="text-sm text-foreground/80 mb-4 line-clamp-3">
-                    &ldquo;{application.pitch}&rdquo;
-                </p>
+                {/* Price — prominent */}
+                <div className="mb-4">
+                    <span className="text-xl font-bold text-foreground">
+                        PKR {application.proposedPrice.toLocaleString()}
+                    </span>
+                    <span className="text-sm text-muted-foreground ml-1">/student</span>
+                </div>
 
-                {/* Quote Details */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                    <div className="flex items-center gap-1.5 text-sm">
-                        <span className="font-bold text-foreground">PKR {application.proposedPrice.toLocaleString()}</span>
-                        <span className="text-muted-foreground">/student</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                {/* Schedule details — clean vertical list */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground mb-4">
+                    <span className="flex items-center gap-1.5">
                         <Calendar className="h-3.5 w-3.5" />
                         {new Date(application.proposedDate).toLocaleDateString("en-US", {
                             month: "short",
@@ -153,32 +135,37 @@ export default function ApplicationCard({
                             hour: "numeric",
                             minute: "2-digit",
                         })}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    </span>
+                    <span className="flex items-center gap-1.5">
                         <Clock className="h-3.5 w-3.5" />
                         {application.proposedDuration >= 60
                             ? `${Math.floor(application.proposedDuration / 60)}h${application.proposedDuration % 60 ? ` ${application.proposedDuration % 60}m` : ""}`
                             : `${application.proposedDuration}m`}
-                    </div>
+                    </span>
                     {application.proposedLocation && (
-                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
                             <MapPin className="h-3.5 w-3.5" />
                             {application.proposedLocation}
-                        </div>
+                        </span>
                     )}
                     {(application.proposedMinEnrollment || application.proposedMaxEnrollment) && (
-                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
                             <Users className="h-3.5 w-3.5" />
                             {application.proposedMinEnrollment && application.proposedMaxEnrollment
                                 ? `${application.proposedMinEnrollment}–${application.proposedMaxEnrollment} students`
                                 : application.proposedMinEnrollment
-                                    ? `Min ${application.proposedMinEnrollment} students`
-                                    : `Max ${application.proposedMaxEnrollment} students`}
-                        </div>
+                                    ? `Min ${application.proposedMinEnrollment}`
+                                    : `Max ${application.proposedMaxEnrollment}`}
+                        </span>
                     )}
                 </div>
 
-                {/* Topics Covered */}
+                {/* Pitch — blockquote style */}
+                <blockquote className="border-l-2 border-border/60 pl-3 mb-4 text-sm text-foreground/70 italic line-clamp-3">
+                    {application.pitch}
+                </blockquote>
+
+                {/* Topics */}
                 <div className="flex flex-wrap gap-1.5 mb-4">
                     {application.topicsCovered.map((topic) => (
                         <span
