@@ -1,6 +1,13 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { requireUser, RATE_LIMITS } from "./utils";
+import {
+    listMyOffersReadModel,
+    listOffersBetweenUsersReadModel,
+    listOffersByTicketReadModel,
+    listOffersForBuyerReadModel,
+} from "./offer_read_models";
+import { acceptOfferWorkflow, createOfferWorkflow } from "./offer_workflows";
+import { getCurrentUser, requireUser } from "./utils";
 
 export const create = mutation({
     args: {
@@ -9,67 +16,7 @@ export const create = mutation({
     },
     handler: async (ctx, args) => {
         const user = await requireUser(ctx);
-
-        // Input validation
-        if (args.price <= 0) {
-            throw new Error("Price must be positive");
-        }
-        if (args.price > 1_000_000) {
-            throw new Error("Price exceeds maximum allowed");
-        }
-
-        // Rate limiting: check recent offers by this user
-        const { windowMs, maxRequests } = RATE_LIMITS.OFFER_CREATE;
-        const recentOffers = await ctx.db
-            .query("offers")
-            .withIndex("by_tutor", (q) => q.eq("tutorId", user._id))
-            .filter((q) => q.gt(q.field("_creationTime"), Date.now() - windowMs))
-            .collect();
-
-        if (recentOffers.length >= maxRequests) {
-            throw new Error("Rate limited: Too many offers. Please wait before submitting more.");
-        }
-
-        // Check if ticket exists and is open
-        const ticket = await ctx.db.get(args.ticketId);
-        if (!ticket || ticket.status !== "open") {
-            throw new Error("Ticket not available");
-        }
-
-        if (user._id === ticket.studentId) {
-            throw new Error("You cannot submit an offer to your own request");
-        }
-
-        // Check if user already offered
-        const existingOffer = await ctx.db
-            .query("offers")
-            .withIndex("by_ticket_and_tutor", (q) =>
-                q.eq("ticketId", args.ticketId).eq("tutorId", user._id)
-            )
-            .unique();
-
-        if (existingOffer) {
-            throw new Error("You have already placed an offer");
-        }
-
-        const offerId = await ctx.db.insert("offers", {
-            ticketId: args.ticketId,
-            studentId: ticket.studentId,
-            tutorId: user._id,
-            price: args.price,
-            status: "pending",
-        });
-
-        // Notify student
-        await ctx.db.insert("notifications", {
-            userId: ticket.studentId,
-            type: "offer_received",
-            data: { ticketId: args.ticketId, offerId },
-            isRead: false,
-            createdAt: Date.now(),
-        });
-
-        return offerId;
+        return await createOfferWorkflow(ctx, { ...args, user });
     },
 });
 
@@ -77,149 +24,12 @@ export const create = mutation({
 export const listByTicket = query({
     args: { ticketId: v.id("tickets") },
     handler: async (ctx, args) => {
-        const ticket = await ctx.db.get(args.ticketId);
-        if (!ticket) return [];
-
-        // Authorization: require authentication
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return [];
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-            .unique();
-
+        const user = await getCurrentUser(ctx);
         if (!user) return [];
-
-        const allOffers = await ctx.db
-            .query("offers")
-            .withIndex("by_ticket", (q) => q.eq("ticketId", args.ticketId))
-            .collect();
-
-        // Only ticket owner can see all offers; tutors see only their own
-        const offers = user._id === ticket.studentId
-            ? allOffers
-            : allOffers.filter(o => o.tutorId === user._id);
-
-        // Find max price for price score calculation
-        const maxPrice = Math.max(...offers.map(o => o.price), 1);
-
-        const enrichedOffers = await Promise.all(
-            offers.map(async (offer) => {
-                const tutor = await ctx.db.get(offer.tutorId);
-                const profile = await ctx.db
-                    .query("tutor_profiles")
-                    .withIndex("by_user", (q) => q.eq("userId", offer.tutorId))
-                    .unique();
-
-                // Get level for this specific course if applicable
-                let tutorLevel: string | undefined = undefined;
-                let hasCourseExpertise = false;
-                if (ticket.courseId) {
-                    const specificOffering = await ctx.db
-                        .query("tutor_offerings")
-                        .withIndex("by_tutor", (q) => q.eq("tutorId", offer.tutorId))
-                        .filter((q) => q.eq(q.field("courseId"), ticket.courseId))
-                        .first();
-                    tutorLevel = specificOffering?.level;
-                    hasCourseExpertise = !!specificOffering;
-                }
-
-                // Get all tutor offerings for related courses check
-                const allOfferings = await ctx.db
-                    .query("tutor_offerings")
-                    .withIndex("by_tutor", (q) => q.eq("tutorId", offer.tutorId))
-                    .collect();
-
-                // Get course names (limit 3 for display)
-                const courseNames = await Promise.all(
-                    allOfferings.slice(0, 3).map(async (offering) => {
-                        const course = offering.courseId ? await ctx.db.get(offering.courseId) : null;
-                        return course?.code;
-                    })
-                );
-                const validCourseNames = courseNames.filter(Boolean) as string[];
-
-                // Check for related courses in same department
-                let hasRelatedCourses = false;
-                if (ticket.department) {
-                    for (const offering of allOfferings) {
-                        const course = offering.courseId ? await ctx.db.get(offering.courseId) : null;
-                        if (course?.department === ticket.department) {
-                            hasRelatedCourses = true;
-                            break;
-                        }
-                    }
-                }
-
-                // Also count all resolved tickets assigned to this tutor
-                const allCompletedJobs = await ctx.db
-                    .query("offers")
-                    .withIndex("by_tutor", (q) => q.eq("tutorId", offer.tutorId))
-                    .filter((q) => q.eq(q.field("status"), "accepted"))
-                    .collect();
-                const completedJobs = allCompletedJobs.length;
-
-                // Calculate match percentage (0-100)
-                let matchPercent = 0;
-
-                // Course expertise: +40%
-                if (hasCourseExpertise) matchPercent += 40;
-
-                // Expertise level: Intermediate +10%, Expert +15%
-                if (tutorLevel === "Expert") matchPercent += 15;
-                else if (tutorLevel === "Intermediate") matchPercent += 10;
-
-                // Related courses in department: +10%
-                if (hasRelatedCourses) matchPercent += 10;
-
-                // Verified status: +10%
-                if (tutor && (tutor.verificationTier === "academic" || tutor.verificationTier === "expert")) matchPercent += 10;
-
-                // Online status: online now +15%, active in 24h +8%
-                const now = Date.now();
-                const isOnline = profile?.isOnline ?? false;
-                const lastActiveAt = profile?.lastActiveAt ?? 0;
-                const activeIn24h = (now - lastActiveAt) < 24 * 60 * 60 * 1000;
-                if (isOnline) matchPercent += 15;
-                else if (activeIn24h) matchPercent += 8;
-
-                // Completed jobs: 10+ jobs +10%, 5+ jobs +5%
-                if (completedJobs >= 10) matchPercent += 10;
-                else if (completedJobs >= 5) matchPercent += 5;
-
-                // Reputation (0-5 scale, normalize to 0-100 for scoring)
-                const reputation = tutor?.reputation ?? 0;
-
-                // Price score (lower is better, 0-100)
-                const priceScore = 100 - (offer.price / maxPrice * 100);
-
-                // Rank score: 40% reputation, 35% match, 25% price
-                const rankScore = (reputation / 5 * 100 * 0.4) + (matchPercent * 0.35) + (priceScore * 0.25);
-
-                return {
-                    ...offer,
-                    tutorName: tutor?.name,
-                    tutorId: offer.tutorId,
-                    sellerName: tutor?.name, // Legacy alias
-                    sellerId: offer.tutorId, // Legacy alias
-                    sellerIsVerified: tutor ? (tutor.verificationTier === "academic" || tutor.verificationTier === "expert") : false,
-                    tutorBio: profile?.bio,
-                    tutorLevel,
-                    tutorCourses: validCourseNames,
-                    // New fields for ranking
-                    tutorReputation: reputation,
-                    completedJobs,
-                    isOnline,
-                    lastActiveAt,
-                    matchPercent,
-                    rankScore,
-                };
-            })
-        );
-
-        // Sort by rankScore descending (best match first)
-        return enrichedOffers.sort((a, b) => b.rankScore - a.rankScore);
+        return await listOffersByTicketReadModel(ctx, {
+            ticketId: args.ticketId,
+            viewerId: user._id,
+        });
     },
 
 });
@@ -228,24 +38,13 @@ export const listByTicket = query({
 export const listByRequest = query({
     args: { requestId: v.id("tickets") },
     handler: async (ctx, args) => {
-        const offers = await ctx.db
-            .query("offers")
-            .withIndex("by_ticket", (q) => q.eq("ticketId", args.requestId))
-            .collect();
+        const user = await getCurrentUser(ctx);
+        if (!user) return [];
 
-        return await Promise.all(
-            offers.map(async (offer) => {
-                const tutor = await ctx.db.get(offer.tutorId);
-                return {
-                    ...offer,
-                    tutorName: tutor?.name,
-                    tutorId: offer.tutorId,
-                    sellerName: tutor?.name,
-                    sellerId: offer.tutorId,
-                    sellerIsVerified: Boolean(tutor && (tutor.verificationTier === "academic" || tutor.verificationTier === "expert")),
-                };
-            })
-        );
+        return await listOffersByTicketReadModel(ctx, {
+            ticketId: args.requestId,
+            viewerId: user._id,
+        });
     },
 });
 
@@ -262,69 +61,10 @@ export const accept = mutation({
         const resolvedTicketId = args.ticketId || args.requestId;
         if (!resolvedTicketId) throw new Error("ticketId is required");
 
-        const ticket = await ctx.db.get(resolvedTicketId);
-        if (!ticket) throw new Error("Ticket not found");
-        if (user._id !== ticket.studentId) {
-            throw new Error("Unauthorized");
-        }
-
-        // Update offer status
-        const offerToAccept = await ctx.db.get(args.offerId);
-        if (!offerToAccept) throw new Error("Offer not found");
-
-        await ctx.db.patch(args.offerId, { status: "accepted" });
-
-        // Update ticket status and assign tutor
-        await ctx.db.patch(resolvedTicketId, {
-            status: "in_session",
-            assignedTutorId: offerToAccept.tutorId
-        });
-
-        // Reject other offers
-        const otherOffers = await ctx.db
-            .query("offers")
-            .withIndex("by_ticket", (q) => q.eq("ticketId", resolvedTicketId))
-            .collect();
-
-        for (const offer of otherOffers) {
-            if (offer._id !== args.offerId) {
-                await ctx.db.patch(offer._id, { status: "rejected" });
-            }
-        }
-
-        // Create conversation if it doesn't exist
-        const offer = await ctx.db.get(args.offerId);
-        if (!offer) throw new Error("Offer not found");
-
-        const existing1 = await ctx.db
-            .query("conversations")
-            .withIndex("by_participant1", (q) => q.eq("participant1", user._id))
-            .filter((q) => q.eq(q.field("participant2"), offer.tutorId))
-            .first();
-
-        const existing2 = await ctx.db
-            .query("conversations")
-            .withIndex("by_participant1", (q) => q.eq("participant1", offer.tutorId))
-            .filter((q) => q.eq(q.field("participant2"), user._id))
-            .first();
-
-        let conversationId = existing1?._id || existing2?._id;
-
-        if (!conversationId) {
-            conversationId = await ctx.db.insert("conversations", {
-                participant1: user._id,
-                participant2: offer.tutorId,
-                updatedAt: Date.now(),
-            });
-        }
-
-        // Notify tutor
-        await ctx.db.insert("notifications", {
-            userId: offer.tutorId,
-            type: "offer_accepted",
-            data: { ticketId: resolvedTicketId, offerId: args.offerId },
-            isRead: false,
-            createdAt: Date.now(),
+        await acceptOfferWorkflow(ctx, {
+            offerId: args.offerId,
+            ticketId: resolvedTicketId,
+            studentId: user._id,
         });
     },
 });
@@ -332,34 +72,9 @@ export const accept = mutation({
 export const listMyOffers = query({
     args: {},
     handler: async (ctx) => {
-        // Return empty if not authenticated (don't throw)
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return [];
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-            .unique();
-
+        const user = await getCurrentUser(ctx);
         if (!user) return [];
-
-        const offers = await ctx.db
-            .query("offers")
-            .withIndex("by_tutor", (q) => q.eq("tutorId", user._id))
-            .collect();
-
-        return await Promise.all(
-            offers.map(async (offer) => {
-                const ticket = await ctx.db.get(offer.ticketId);
-                return {
-                    ...offer,
-                    requestTitle: ticket?.title || "Unknown Ticket",
-                    requestStatus: ticket?.status,
-                    requestDeadline: ticket?.deadline,
-                    requestId: offer.ticketId, // Alias for backward compat
-                };
-            })
-        );
+        return await listMyOffersReadModel(ctx, user._id);
     },
 });
 
@@ -367,42 +82,10 @@ export const listBetweenUsers = query({
     args: { otherUserId: v.id("users") },
     handler: async (ctx, args) => {
         const user = await requireUser(ctx);
-
-        // Get all offers where I am the student and other is tutor
-        const iAmStudent = await ctx.db
-            .query("offers")
-            .filter(q =>
-                q.and(
-                    q.eq(q.field("studentId"), user._id),
-                    q.eq(q.field("tutorId"), args.otherUserId)
-                )
-            )
-            .collect();
-
-        // Get all offers where I am the tutor and other is student
-        const iAmTutor = await ctx.db
-            .query("offers")
-            .filter(q =>
-                q.and(
-                    q.eq(q.field("studentId"), args.otherUserId),
-                    q.eq(q.field("tutorId"), user._id)
-                )
-            )
-            .collect();
-
-        const allOffers = [...iAmStudent, ...iAmTutor];
-
-        return await Promise.all(
-            allOffers.map(async (offer) => {
-                const ticket = await ctx.db.get(offer.ticketId);
-                return {
-                    ...offer,
-                    requestTitle: ticket?.title,
-                    requestDescription: ticket?.description,
-                    requestId: offer.ticketId, // Alias
-                };
-            })
-        );
+        return await listOffersBetweenUsersReadModel(ctx, {
+            userId: user._id,
+            otherUserId: args.otherUserId,
+        });
     },
 });
 
@@ -410,31 +93,6 @@ export const listOffersForBuyer = query({
     args: {},
     handler: async (ctx) => {
         const user = await requireUser(ctx);
-
-        // Get all tickets by this user (as student)
-        const tickets = await ctx.db
-            .query("tickets")
-            .withIndex("by_student", (q) => q.eq("studentId", user._id))
-            .collect();
-
-        if (tickets.length === 0) return [];
-
-        // Get offers for these tickets
-        const offers = await Promise.all(
-            tickets.map(async (ticket) => {
-                const ticketOffers = await ctx.db
-                    .query("offers")
-                    .withIndex("by_ticket", (q) => q.eq("ticketId", ticket._id))
-                    .collect();
-
-                return ticketOffers.map(offer => ({
-                    ...offer,
-                    requestTitle: ticket.title,
-                    requestId: offer.ticketId, // Alias for backward compat
-                }));
-            })
-        );
-
-        return offers.flat();
+        return await listOffersForBuyerReadModel(ctx, user._id);
     },
 });

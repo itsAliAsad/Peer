@@ -1,6 +1,11 @@
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { mutation, query, internalMutation } from "./_generated/server";
+import { insertNotification } from "./notification_service";
+import {
+    notificationDataValidator,
+    notificationTypeValidator,
+} from "./notification_types";
 import { requireUser } from "./utils";
 import { Id } from "./_generated/dataModel";
 
@@ -20,7 +25,7 @@ export const list = query({
             ...results,
             page: await Promise.all(
                 results.page.map(async (n) => {
-                    if (n.type === "new_message" && n.data?.senderId) {
+                    if (n.type === "new_message" && "senderId" in n.data) {
                         const sender = await ctx.db.get(n.data.senderId as Id<"users">);
                         return {
                             ...n,
@@ -71,34 +76,10 @@ export const markAllRead = mutation({
 export const create = internalMutation({
     args: {
         userId: v.id("users"),
-        type: v.union(
-            v.literal("offer_received"),
-            v.literal("offer_accepted"),
-            v.literal("ticket_resolved"),
-            v.literal("new_message")
-        ),
-        data: v.any(),
+        type: notificationTypeValidator,
+        data: notificationDataValidator,
     },
     handler: async (ctx, args) => {
-        // Internal mutation - only callable from other backend functions
-        // For MVP, we'll keep it simple and call it directly from other mutations or make it internal.
-        // Since we can't easily call other mutations from mutations in Convex without `internalMutation` and `internal`,
-        // we'll define it as a helper function or just duplicate logic?
-        // Better: Use `internalMutation` and call it via `ctx.runMutation` (only available in actions) or just insert directly in the other mutations.
-        // Actually, for simplicity in MVP, I'll just export a helper function or insert directly in other files.
-        // But to keep it clean, let's make it a mutation that can be called.
-        // Wait, regular mutations can't call other mutations.
-        // So I will just write the insert logic in the respective files for now, or use a helper function if I was in the same file.
-        // Since they are different files, I'll just duplicate the insert code or import a helper if I extract it to a shared file.
-        // For now, I'll just define the schema and queries here.
-        // The `create` mutation here can be used for testing or admin.
-
-        await ctx.db.insert("notifications", {
-            userId: args.userId,
-            type: args.type,
-            data: args.data,
-            isRead: false,
-            createdAt: Date.now(),
-        });
+        await insertNotification(ctx, args as Parameters<typeof insertNotification>[1]);
     },
 });

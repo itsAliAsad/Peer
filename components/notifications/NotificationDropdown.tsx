@@ -36,6 +36,26 @@ export default function NotificationDropdown() {
     const notifications = results ?? [];
     const unreadCount = notifications.filter((n) => !n.isRead).length;
 
+    const getMessageNotificationMeta = (notification: typeof notifications[number]) => {
+        if (notification.type !== "new_message" || !("count" in notification.data)) {
+            return null;
+        }
+
+        const sender =
+            "sender" in notification &&
+            notification.sender &&
+            typeof notification.sender === "object" &&
+            "name" in notification.sender
+                ? notification.sender
+                : undefined;
+
+        return {
+            count: notification.data.count,
+            senderName:
+                sender && typeof sender.name === "string" ? sender.name : undefined,
+        };
+    };
+
     const handleNotificationClick = async (notification: typeof notifications[0]) => {
         if (!notification.isRead) {
             await markRead({ notificationId: notification._id });
@@ -66,6 +86,9 @@ export default function NotificationDropdown() {
                 } else {
                     router.push(`/messages`);
                 }
+                break;
+            case "credential_reviewed":
+                router.push(`/profile`);
                 break;
             case "crash_course_application":
             case "crash_course_vote_open":
@@ -122,17 +145,21 @@ export default function NotificationDropdown() {
                             )}
                             onClick={() => handleNotificationClick(notification)}
                         >
+                            {(() => {
+                                const messageMeta = getMessageNotificationMeta(notification);
+                                return (
                             <div className="font-medium text-sm">
                                 {notification.type === "offer_received" && "New Offer Received"}
                                 {notification.type === "offer_accepted" && "Offer Accepted"}
                                 {notification.type === "ticket_resolved" && "Ticket Resolved"}
+                                {notification.type === "credential_reviewed" && "Credential Review Update"}
                                 {notification.type === "new_message" && (
                                     <>
-                                        {(notification as any).data?.count > 1
-                                            ? `${(notification as any).data.count} new messages`
+                                        {messageMeta && messageMeta.count > 1
+                                            ? `${messageMeta.count} new messages`
                                             : "New Message"}
-                                        {(notification as any).sender?.name &&
-                                            ` from ${(notification as any).sender.name}`}
+                                        {messageMeta?.senderName &&
+                                            ` from ${messageMeta.senderName}`}
                                     </>
                                 )}
                                 {notification.type === "crash_course_application" && "New Tutor Application"}
@@ -143,6 +170,8 @@ export default function NotificationDropdown() {
                                 {notification.type === "crash_course_cancelled" && "Crash Course Cancelled"}
                                 {notification.type === "crash_course_low_enrollment" && "Low Enrollment"}
                             </div>
+                                );
+                            })()}
                             <div className="text-xs text-muted-foreground">
                                 {new Date(notification.createdAt).toLocaleDateString()}{" "}
                                 {new Date(notification.createdAt).toLocaleTimeString()}

@@ -1,6 +1,14 @@
-import { MutationCtx, QueryCtx } from "./_generated/server";
-import { Doc, Id } from "./_generated/dataModel";
 import { ConvexError } from "convex/values";
+import type { Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
+import { writeAuditEntry } from "./audit";
+import {
+    getCurrentUser,
+    type IdentityCtx,
+    type RequireUserOptions,
+    requireCurrentAdmin,
+    requireCurrentUser,
+} from "./identity";
 
 // ==========================================
 // INPUT VALIDATION CONSTANTS
@@ -38,48 +46,14 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
 // ==========================================
 // AUTH UTILITIES
 // ==========================================
-interface RequireUserOptions {
-    allowBanned?: boolean;
+export { getCurrentUser };
+
+export async function requireUser(ctx: IdentityCtx, options?: RequireUserOptions) {
+    return await requireCurrentUser(ctx, options);
 }
 
-type Ctx = MutationCtx | QueryCtx;
-
-async function fetchUser(ctx: Ctx): Promise<Doc<"users">> {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-        throw new ConvexError("Unauthenticated");
-    }
-
-    const user = await ctx.db
-        .query("users")
-        .withIndex("by_token", (q) =>
-            q.eq("tokenIdentifier", identity.tokenIdentifier)
-        )
-        .unique();
-
-    if (!user) {
-        throw new ConvexError("User not found");
-    }
-
-    return user;
-}
-
-export async function requireUser(ctx: Ctx, options?: RequireUserOptions) {
-    const user = await fetchUser(ctx);
-
-    if (user.bannedAt !== undefined && !options?.allowBanned) {
-        throw new ConvexError("Your account has been banned. Please contact support.");
-    }
-
-    return user;
-}
-
-export async function requireAdmin(ctx: Ctx) {
-    const user = await requireUser(ctx);
-    if (user.role !== "admin") {
-        throw new ConvexError("Unauthorized: Admin access required");
-    }
-    return user;
+export async function requireAdmin(ctx: IdentityCtx) {
+    return await requireCurrentAdmin(ctx);
 }
 
 // ==========================================
@@ -95,8 +69,5 @@ export async function logAudit(
         details?: unknown;
     }
 ) {
-    await ctx.db.insert("audit_logs", {
-        ...args,
-        createdAt: Date.now(),
-    });
+    await writeAuditEntry(ctx, args);
 }

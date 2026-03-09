@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { setVerificationTier } from "./trust";
 import { requireAdmin, logAudit } from "./utils";
 
 export const getStats = query({
@@ -112,7 +113,8 @@ export const setVerification = mutation({
     args: { userId: v.id("users"), isVerified: v.boolean() },
     handler: async (ctx, args) => {
         const admin = await requireAdmin(ctx);
-        await ctx.db.patch(args.userId, {
+        await setVerificationTier(ctx, {
+            userId: args.userId,
             verificationTier: args.isVerified ? "academic" : "none",
             verifiedBy: args.isVerified ? admin._id : undefined,
             verifiedAt: args.isVerified ? Date.now() : undefined,

@@ -1,22 +1,14 @@
 import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { ensureTutorProfile, getTutorProfileByUserId } from "./tutor_profile_service";
+import { getCurrentUser, requireUser } from "./utils";
 
 export const getMyProfile = query({
     handler: async (ctx) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return null;
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-            .unique();
-
+        const user = await getCurrentUser(ctx);
         if (!user) return null;
 
-        return await ctx.db
-            .query("tutor_profiles")
-            .withIndex("by_user", (q) => q.eq("userId", user._id))
-            .unique();
+        return await getTutorProfileByUserId(ctx, user._id);
     },
 });
 
@@ -38,20 +30,9 @@ export const updateProfile = mutation({
         acceptingRequests: v.optional(v.boolean()),
     },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) throw new Error("Unauthenticated");
+        const user = await requireUser(ctx);
 
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-            .unique();
-
-        if (!user) throw new Error("User not found");
-
-        const profile = await ctx.db
-            .query("tutor_profiles")
-            .withIndex("by_user", (q) => q.eq("userId", user._id))
-            .unique();
+        const profile = await getTutorProfileByUserId(ctx, user._id);
 
         if (profile) {
             const updates: Record<string, unknown> = {};
@@ -66,20 +47,12 @@ export const updateProfile = mutation({
             }
             await ctx.db.patch(profile._id, updates);
         } else {
-            // Create new - use defaults if not provided
-            await ctx.db.insert("tutor_profiles", {
+            await ensureTutorProfile(ctx, {
                 userId: user._id,
-                bio: args.bio || "",
-                isOnline: true,
-                lastActiveAt: Date.now(),
-                creditBalance: 0,
-                settings: {
-                    acceptingRequests: args.acceptingRequests ?? true,
-                    acceptingPaid: true,
-                    acceptingFree: false,
-                    minRate: args.minRate ?? 500,
-                    allowedHelpTypes: args.allowedHelpTypes || [],
-                },
+                bio: args.bio ?? "",
+                minRate: args.minRate,
+                allowedHelpTypes: args.allowedHelpTypes,
+                acceptingRequests: args.acceptingRequests,
             });
         }
     },
@@ -91,20 +64,9 @@ export const updateOnlineStatus = mutation({
         status: v.union(v.literal("online"), v.literal("away"), v.literal("offline"))
     },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) throw new Error("Unauthenticated");
+        const user = await requireUser(ctx);
 
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-            .unique();
-
-        if (!user) throw new Error("User not found");
-
-        const profile = await ctx.db
-            .query("tutor_profiles")
-            .withIndex("by_user", (q) => q.eq("userId", user._id))
-            .unique();
+        const profile = await getTutorProfileByUserId(ctx, user._id);
 
         if (!profile) return; // No tutor profile — silently skip (student users, etc.)
 

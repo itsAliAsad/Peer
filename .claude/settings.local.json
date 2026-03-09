@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l /mnt/d/Projects/peer/docs/claude/*.md /mnt/d/Projects/peer/CLAUDE.md)",
+      "Bash(wc -l /mnt/d/Projects/peer/docs/claude/*.md | sort -n)"
+    ]
+  }
+}

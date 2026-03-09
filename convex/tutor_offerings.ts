@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { requireUser } from "./utils";
+import { isUserVerified } from "./trust";
+import { getCurrentUser, requireUser } from "./utils";
 
 // Add a course the tutor can help with
 export const add = mutation({
@@ -89,14 +90,7 @@ export const update = mutation({
 // Get my offerings
 export const listMyOfferings = query({
     handler: async (ctx) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return [];
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-            .unique();
-
+        const user = await getCurrentUser(ctx);
         if (!user) return [];
 
         const offerings = await ctx.db
@@ -158,9 +152,7 @@ export const listByCourse = query({
                     ...offering,
                     tutorName: tutor?.name,
                     tutorImage: tutor?.image,
-                    tutorIsVerified: tutor
-                        ? tutor.verificationTier === "academic" || tutor.verificationTier === "expert"
-                        : false,
+                    tutorIsVerified: tutor ? isUserVerified(tutor) : false,
                 };
             })
         );

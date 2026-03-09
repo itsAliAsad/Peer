@@ -1,5 +1,9 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import {
+    notificationDataValidator,
+    notificationTypeValidator,
+} from "./notification_types";
 
 export default defineSchema({
     // ==========================================
@@ -508,24 +512,8 @@ export default defineSchema({
 
     notifications: defineTable({
         userId: v.id("users"),
-        type: v.union(
-            v.literal("offer_received"),
-            v.literal("offer_accepted"),
-            v.literal("ticket_resolved"),
-            v.literal("request_completed"), // Legacy: backward compat
-            v.literal("new_message"),
-            // Crash Course notifications
-            v.literal("crash_course_application"),
-            v.literal("crash_course_vote_open"),
-            v.literal("crash_course_selected"),
-            v.literal("crash_course_confirmed"),
-            v.literal("crash_course_reminder"),
-            v.literal("crash_course_cancelled"),
-            v.literal("crash_course_low_enrollment")
-        ),
-        // TODO: Type this as a discriminated union keyed on `type` once all
-        // notification insert sites are updated to include a matching `data.type` field.
-        data: v.any(),
+        type: notificationTypeValidator,
+        data: notificationDataValidator,
         isRead: v.boolean(),
         createdAt: v.number(),
     })

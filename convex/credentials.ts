@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
-import { requireUser } from "./utils";
+import { notifyCredentialReviewed } from "./notification_service";
+import { recalculateVerificationTierForUser } from "./trust";
+import { getCurrentUser, requireAdmin, requireUser } from "./utils";
 
 // ==========================================
 // UPLOAD
@@ -173,15 +175,7 @@ export const deleteCredential = mutation({
 /** All credentials for the currently authenticated tutor */
 export const listMyCredentials = query({
     handler: async (ctx) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return [];
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_token", (q) =>
-                q.eq("tokenIdentifier", identity.tokenIdentifier)
-            )
-            .unique();
+        const user = await getCurrentUser(ctx);
         if (!user) return [];
 
         return await ctx.db
@@ -207,7 +201,12 @@ export const getPublicCredentials = query({
             .collect();
 
         // Strip document storage info from public view
-        return credentials.map(({ storageId: _s, fileUrl: _f, ...rest }) => rest);
+        return credentials.map((credential) => {
+            const { storageId, fileUrl, ...rest } = credential;
+            void storageId;
+            void fileUrl;
+            return rest;
+        });
     },
 });
 
@@ -253,8 +252,7 @@ export const reviewCredential = mutation({
         adminNotes: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const admin = await requireUser(ctx);
-        if (admin.role !== "admin") throw new Error("Unauthorized");
+        const admin = await requireAdmin(ctx);
 
         const cred = await ctx.db.get(args.credentialId);
         if (!cred) throw new Error("Credential not found");
@@ -267,45 +265,15 @@ export const reviewCredential = mutation({
             adminNotes: args.adminNotes,
         });
 
-        // Recalculate tier if approved (inline to avoid internal API dependency)
         if (args.decision === "approved") {
-            const approvedCreds = await ctx.db
-                .query("tutor_credentials")
-                .withIndex("by_tutor", (q) => q.eq("tutorId", cred.tutorId))
-                .filter((q) => q.eq(q.field("status"), "approved"))
-                .collect();
-
-            const tutor = await ctx.db.get(cred.tutorId);
-            if (tutor) {
-                let tier: "none" | "identity" | "academic" | "expert" = "identity";
-                if (approvedCreds.length >= 1) tier = "academic";
-                if (approvedCreds.length >= 3) {
-                    const avgRating = tutor.ratingCount > 0
-                        ? tutor.ratingSum / tutor.ratingCount : 0;
-                    if (avgRating >= 4.5) tier = "expert";
-                }
-                await ctx.db.patch(cred.tutorId, {
-                    verificationTier: tier,
-                });
-            }
+            await recalculateVerificationTierForUser(ctx, cred.tutorId);
         }
 
-        // Notify tutor
-        const notifType =
-            args.decision === "approved"
-                ? "offer_accepted" // reuse existing type for now
-                : "offer_received";
-        await ctx.db.insert("notifications", {
-            userId: cred.tutorId,
-            type: notifType,
-            data: {
-                credentialId: args.credentialId,
-                credentialType: cred.credentialType,
-                decision: args.decision,
-                reason: args.rejectionReason,
-            },
-            isRead: false,
-            createdAt: Date.now(),
+        await notifyCredentialReviewed(ctx, cred.tutorId, {
+            credentialId: args.credentialId,
+            credentialType: cred.credentialType,
+            decision: args.decision,
+            reason: args.rejectionReason,
         });
     },
 });
@@ -318,32 +286,6 @@ export const reviewCredential = mutation({
 export const recalculateVerificationTier = internalMutation({
     args: { tutorId: v.id("users") },
     handler: async (ctx, args) => {
-        const approvedCreds = await ctx.db
-            .query("tutor_credentials")
-            .withIndex("by_tutor", (q) => q.eq("tutorId", args.tutorId))
-            .filter((q) => q.eq(q.field("status"), "approved"))
-            .collect();
-
-        const tutor = await ctx.db.get(args.tutorId);
-        if (!tutor) return;
-
-        let tier: "none" | "identity" | "academic" | "expert" = "identity";
-
-        if (approvedCreds.length >= 1) {
-            tier = "academic";
-        }
-
-        if (approvedCreds.length >= 3) {
-            const avgRating = tutor.ratingCount > 0
-                ? tutor.ratingSum / tutor.ratingCount
-                : 0;
-            // "expert" also requires rating >= 4.5 and 5+ completed jobs
-            // (job count check is a TODO — simplified here)
-            if (avgRating >= 4.5) {
-                tier = "expert";
-            }
-        }
-
-        await ctx.db.patch(args.tutorId, { verificationTier: tier });
+        await recalculateVerificationTierForUser(ctx, args.tutorId);
     },
 });

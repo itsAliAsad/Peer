@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { z } from "zod";
 import { mutation, query } from "./_generated/server";
+import { ensureTutorProfile, getTutorProfileByUserId } from "./tutor_profile_service";
+import { getUserReputation, isUserVerified } from "./trust";
 import { requireUser } from "./utils";
 
 const updateSchema = z
@@ -92,9 +94,9 @@ export const currentUser = query({
             return {
                 ...user,
                 universityName,
-                reputation: user.ratingCount > 0 ? user.ratingSum / user.ratingCount : 0,
+                reputation: getUserReputation(user),
                 isAdmin: user.role === "admin",
-                isVerified: user.verificationTier === "academic" || user.verificationTier === "expert",
+                isVerified: isUserVerified(user),
                 isBanned: user.bannedAt !== undefined,
             };
         } catch (error) {
@@ -160,8 +162,8 @@ export const get = query({
             bio: user.bio,
             universityName,
             role: user.role,
-            isVerified: user.verificationTier === "academic" || user.verificationTier === "expert",
-            reputation: user.ratingCount > 0 ? user.ratingSum / user.ratingCount : 0,
+            isVerified: isUserVerified(user),
+            reputation: getUserReputation(user),
             // Links are public for profile display
             links: user.links,
         };
@@ -228,30 +230,14 @@ export const completeOnboarding = mutation({
 
         await ctx.db.patch(user._id, userPatch);
 
-        // If tutor, create tutor_profiles row
         if (args.role === "tutor") {
-            // Check if profile already exists (idempotency)
-            const existing = await ctx.db
-                .query("tutor_profiles")
-                .withIndex("by_user", (q) => q.eq("userId", user._id))
-                .unique();
-
-            if (!existing) {
-                await ctx.db.insert("tutor_profiles", {
-                    userId: user._id,
-                    bio: args.bio,
-                    isOnline: true,
-                    lastActiveAt: Date.now(),
-                    creditBalance: 0,
-                    settings: {
-                        acceptingRequests: true,
-                        acceptingPaid: true,
-                        acceptingFree: false,
-                        minRate: args.minRate ?? 500,
-                        allowedHelpTypes: args.helpTypes ?? [],
-                    },
-                });
-            }
+            await ensureTutorProfile(ctx, {
+                userId: user._id,
+                bio: args.bio,
+                minRate: args.minRate,
+                allowedHelpTypes: args.helpTypes,
+                acceptingRequests: true,
+            });
         }
 
         return args.role;
@@ -277,10 +263,7 @@ export const updateTutorPresence = mutation({
     handler: async (ctx, args) => {
         const user = await requireUser(ctx);
 
-        const profile = await ctx.db
-            .query("tutor_profiles")
-            .withIndex("by_user", (q) => q.eq("userId", user._id))
-            .unique();
+        const profile = await getTutorProfileByUserId(ctx, user._id);
 
         if (profile) {
             await ctx.db.patch(profile._id, {
@@ -316,10 +299,7 @@ export const updateTutorSettings = mutation({
     handler: async (ctx, args) => {
         const user = await requireUser(ctx);
 
-        const profile = await ctx.db
-            .query("tutor_profiles")
-            .withIndex("by_user", (q) => q.eq("userId", user._id))
-            .unique();
+        const profile = await getTutorProfileByUserId(ctx, user._id);
 
         if (profile) {
             await ctx.db.patch(profile._id, {

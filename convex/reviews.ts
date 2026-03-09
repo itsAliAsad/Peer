@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
+import { applyReviewToUser } from "./trust";
 import { requireUser, INPUT_LIMITS, validateLength } from "./utils";
 
 export const create = mutation({
@@ -69,18 +70,6 @@ export const create = mutation({
             type: args.type,
         });
 
-        const reviewee = await ctx.db.get(revieweeId);
-        if (!reviewee) throw new Error("Reviewee not found");
-
-        const nextRatingSum = reviewee.ratingSum + args.rating;
-        const nextRatingCount = reviewee.ratingCount + 1;
-        const newReputation =
-            nextRatingCount > 0 ? nextRatingSum / nextRatingCount : 0;
-
-        await ctx.db.patch(revieweeId, {
-            ratingSum: nextRatingSum,
-            ratingCount: nextRatingCount,
-            reputation: newReputation,
-        });
+        await applyReviewToUser(ctx, revieweeId, args.rating);
     },
 });
